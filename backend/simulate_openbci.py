@@ -1,8 +1,7 @@
-import math
 import random
 import time
 from flask import Flask, jsonify
-from flask_socketio import SocketIO, emit 
+from flask_socketio import SocketIO 
 
 app = Flask(__name__)
 socketio = SocketIO(app)
