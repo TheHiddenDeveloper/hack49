@@ -108,15 +108,14 @@ def analyze_pupil_behavior(video_stream):
 
                 if len(eyes) == 2:
 
-                    # Extract the two eye regions
+                    # Extract the regions of each eyes
                     for (ex, ey, ew, eh) in eyes:
                         eye_region = upper_color_face_region[ey:ey+eh, ex:ex+ew]
 
-                        # Detect pupil size
+                        # Detect pupil size of each eyes
                         pupil_size = detect_pupil_dilation(eye_region)
 
-                        if pupil_size:
-                            
+                        if pupil_size:               
                             # Save the pupil size to analyze resizing
                             if prev_pupil_size is None:
                                 prev_pupil_size = pupil_size
@@ -132,7 +131,7 @@ def analyze_pupil_behavior(video_stream):
             # Display the frame with status
             cv2.imshow("Pupil Behavior Analysis", frame)
 
-            # Break loop on 'q' key press
+            # Break loop on 'q' key press (change this condition so that the detection ends when exhaustion status is conclusive)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
