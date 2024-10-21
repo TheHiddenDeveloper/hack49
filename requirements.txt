@@ -1,0 +1,7 @@
+opencv-python
+numpy
+scikit-learn
+dlib
+Flask-SocketIO
+Flask
+imutils
