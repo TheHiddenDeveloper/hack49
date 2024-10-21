@@ -6,6 +6,10 @@ from flask_socketio import SocketIO
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+"""
+Description: Simulate EGG 4 channels data to mimic OpenBCI headband.
+
+"""
 def simulate_open_bci():
     while True:
         # Generate EGG data for 4 channels
