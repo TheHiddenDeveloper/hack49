@@ -51,84 +51,96 @@ Parameter:
     resizing: whether the size is changing (False by default)
 Return: Feedback whether a person is tired, likely tired, or normal.
 """
-def check_tiredness(left_pupil_size, right_pupil_size, resizing):
-    left_dilated = pupil_model.is_dilated(left_pupil_size)
-    right_dilated = pupil_model.is_dilated(right_pupil_size)
+def check_tiredness(pupil_size, resizing):
+    # check the dilation of left and right pupil
+    pupil_dilated = pupil_model.is_dilated(pupil_size)
     
-    if not resizing and (left_dilated or right_dilated):
-        return "The person is tired as pupils are dilated and not resizing."
-    elif resizing and (left_dilated or right_dilated):
-        return "The person is likely tired as pupils are dilated despite resizing."
-    elif resizing and not left_dilated and not right_dilated:
-        return "The person appears normal with normal pupil resizing."
+    # exhaustion if there's a problem with pupil resizing and dilation.
+    if not resizing and pupil_dilated:
+        return "Exhaustion detected!"
+    elif resizing and pupil_dilated:
+        return "There are symptoms of exhaustion."
+    elif resizing and not pupil_dilated:
+        return "Normal."
     return "Unable to determine tiredness."
 
+
+"""
+Description: Analyze the behaviour of captured eye's pupils on camera.
+Paramter:
+    video_stream: stream of video captured by the laptop webcam.
+Return: None
+"""
 def analyze_pupil_behavior(video_stream):
-    prev_left_pupil_size = prev_right_pupil_size = None
-    resizing = False
+    try:
+        prev_pupil_size = None
+        resizing = False
 
-    while True:
-        ret, frame = video_stream.read()
-        if not ret:
-            print("Error: Unable to capture video frames.")
-            break
+        while True:
+            ret, frame = video_stream.read()
+            if not ret:
+                print("Error: Unable to capture video frames.")
+                break
 
-        # Convert to grayscale for faster processing
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Convert to grayscale for faster processing
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Detect faces in the frame
-        faces = face_cascade.detectMultiScale(gray_frame, 1.3, 5)
+            # Detect faces in the frame
+            faces = face_cascade.detectMultiScale(gray_frame, 1.3, 5)
 
-        for (x, y, w, h) in faces:
-            # Draw a rectangle around the face
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            for (x, y, w, h) in faces:
+                # Draw a rectangle around the face
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-            # Region of interest for face (where the eyes are located)
-            face_region = gray_frame[y:y+h, x:x+w]
-            color_face_region = frame[y:y+h, x:x+w]
+                # Region of interest for face
+                face_region = gray_frame[y:y+h, x:x+w]
+                color_face_region = frame[y:y+h, x:x+w]
 
-            # Limit eye detection to the top half of the face (to avoid detecting the mouth or nose)
-            upper_face_region = face_region[:h//2, :]
-            upper_color_face_region = color_face_region[:h//2, :]
+                # Limit eye detection to the top half of the face
+                upper_face_region = face_region[:h//2, :]
+                upper_color_face_region = color_face_region[:h//2, :]
 
-            # Detect eyes within the upper face region
-            eyes = eye_cascade.detectMultiScale(upper_face_region)
+                # Detect eyes within the upper face region
+                eyes = eye_cascade.detectMultiScale(upper_face_region)
 
-            # Sort the eyes based on their size (area), and pick the two largest (most likely to be left and right eyes)
-            eyes = sorted(eyes, key=lambda e: e[2] * e[3], reverse=True)[:2]
+                # Sort the eyes based on their size (area), and pick the two largest (most likely to be left and right eyes)
+                eyes = sorted(eyes, key=lambda e: e[2] * e[3], reverse=True)[:2]
 
-            if len(eyes) == 2:
-                # Extract the two eye regions
-                for (ex, ey, ew, eh) in eyes:
-                    eye_region = upper_color_face_region[ey:ey+eh, ex:ex+ew]
+                if len(eyes) == 2:
 
-                    # Detect pupil size
-                    pupil_size = detect_pupil_dilation(eye_region)
+                    # Extract the two eye regions
+                    for (ex, ey, ew, eh) in eyes:
+                        eye_region = upper_color_face_region[ey:ey+eh, ex:ex+ew]
 
-                    if pupil_size:
-                        
-                        # Save the pupil size to analyze resizing
-                        if prev_left_pupil_size is None:
-                            prev_left_pupil_size = pupil_size
-                        else:
-                            resizing = abs(pupil_size[1] - prev_left_pupil_size[1]) > 1
-                            prev_left_pupil_size = pupil_size
+                        # Detect pupil size
+                        pupil_size = detect_pupil_dilation(eye_region)
 
-            # Assess tiredness based on pupil behavior
-            if prev_left_pupil_size is not None:
-                status = check_tiredness(prev_left_pupil_size, prev_left_pupil_size, resizing)
-                cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                        if pupil_size:
+                            
+                            # Save the pupil size to analyze resizing
+                            if prev_pupil_size is None:
+                                prev_pupil_size = pupil_size
+                            else:
+                                resizing = abs(pupil_size[1] - prev_pupil_size[1]) > 1
+                                prev_pupil_size = pupil_size
 
-        # Display the frame with status
-        cv2.imshow("Pupil Behavior Analysis", frame)
+                # Assess tiredness based on pupil behavior
+                if prev_pupil_size is not None:
+                    status = check_tiredness(prev_pupil_size, resizing)
+                    cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
-        # Break loop on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            # Display the frame with status
+            cv2.imshow("Pupil Behavior Analysis", frame)
 
-    # Release the video stream and close windows
-    video_stream.release(0)
-    cv2.destroyAllWindows()
+            # Break loop on 'q' key press
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        # Release the video stream and close windows
+        video_stream.release(0)
+        cv2.destroyAllWindows()
+    except SystemError as err:
+        print(f"Error during release: {err}")
 
 if __name__ == "__main__":
     # Open the webcam video stream
